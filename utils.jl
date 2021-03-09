@@ -9,6 +9,30 @@ function layer_unpacker(i,l,k)
     return input_dim, output_dim
 end
 
+function find_best_trace(x,y,iters,plot_it=false)
+    obs_master = choicemap()::ChoiceMap
+    obs_master[:y] = y_train
+    obs = obs_master;
+    best_trace, scores, mses = likelihood_regression(x,y,iters)
+
+    if plot_it
+        PyPlot.scatter(mses, scores)
+        plt.title("Comparing Classifier Accuracy to Log Likelihood")
+        plt.xlabel("Classifier MSE")
+        plt.ylabel("Log Likelihood")
+    end
+
+    pred_y = transpose(G(x_train,best_trace))[:,1]
+    best_mse = mse_scaled(pred_y, y_train)
+    variance = 1/(best_trace[:τᵧ])
+    println("Best noise variance: $variance")
+    println("Best MSE: $best_mse")
+    println("Best Score: $(get_score(best_trace))")
+    println("Best layer count: $(best_trace[:l])")
+    
+    return best_trace
+end
+
 function mse_scaled(y_pred,y_real)
     y_pred = StatsBase.reconstruct(dy,y_pred)
     y_real = StatsBase.reconstruct(dy,y_real)
@@ -19,7 +43,7 @@ function mse_unscaled(y_pred,y_real)
     √(sum((y_pred .- y_real).^2))/length(y_real)
 end
 
-function likelihood_regression(x, y, iters)
+function likelihood_regression(x,y,iters)
     obs = obs_master;
     scores = []
     mses = []
