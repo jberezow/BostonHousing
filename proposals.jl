@@ -53,17 +53,21 @@ end
             h = Int(k * k)
             
             #Hidden Weights
-            u = zeros(h) 
-            S = Diagonal([1 for i=1:length(u)])
+            u = zeros(h)
+            σ = 1/trace[(:τ,i)]
+            S = Diagonal([σ for i=1:length(u)])
             W = @trace(mvnormal(u,S), (:W,i))
 
             #Hidden Biases
             ub = zeros(k)
-            Sb = Diagonal([1 for i=1:length(ub)])    
+            σᵦ = 1/trace[(:τᵦ,i)]
+            Sb = Diagonal([σᵦ for i=1:length(ub)])    
             b = @trace(mvnormal(ub,Sb), (:b,i))
             
             obs_new[(:W,i)] = W
             obs_new[(:b,i)] = b
+            obs_new[(:τ,i)] = trace[(:τ,i)]
+            obs_new[(:τᵦ,i)] = trace[(:τᵦ,i)]
             
             q_score += (
                 log(pdf(MvNormal(u,S),W)) + 
@@ -73,13 +77,14 @@ end
             obs_new[(:k,i)] = trace[(:k,i)]
             obs_new[(:W,i)] = trace[(:W,i)]
             obs_new[(:b,i)] = trace[(:b,i)]
+            obs_new[(:τ,i)] = trace[(:τ,i)]
+            obs_new[(:τᵦ,i)] = trace[(:τᵦ,i)]
         end
     end
     #------------------------------------------------
     
     #Update Trace and Return Trace and Weights
     (new_trace,_,_,_) = update(trace, args, argdiffs, obs_new)
-    #(new_trace,) = generate(interpolator, (x,), obs_new)
     q = -q_score
         
     return (new_trace, q)
@@ -117,12 +122,14 @@ end
             #Hidden Weights
             W = trace[(:W,output)]
             u = zeros(length(W))
-            S = Diagonal([1 for i=1:length(u)])
+            σ = 1/trace[(:τ,i)]
+            S = Diagonal([σ for i=1:length(u)])
 
             #Hidden Biases
             b = trace[(:b,output)]
             ub = zeros(length(b))
-            Sb = Diagonal([1 for i=1:length(b)])  
+            σᵦ = 1/trace[(:τᵦ,i)]
+            Sb = Diagonal([σᵦ for i=1:length(b)])  
             
             q_score += (
                 log(pdf(MvNormal(u,S),W)) + 
@@ -132,6 +139,8 @@ end
             obs_new[(:k,i)] = trace[(:k,i)]
             obs_new[(:W,i)] = trace[(:W,i)]
             obs_new[(:b,i)] = trace[(:b,i)]
+            obs_new[(:τ,i)] = trace[(:τ,i)]
+            obs_new[(:τᵦ,i)] = trace[(:τᵦ,i)]
         end
     end
     #-----------------------------------------------------
