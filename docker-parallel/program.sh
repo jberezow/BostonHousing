@@ -1,4 +1,5 @@
 #!/bin/bash
 
-export JULIA_NUM_THREADS=$(nproc)
+export JULIA_NUM_THREADS=16
+
 julia /app/main.jl >program.log 

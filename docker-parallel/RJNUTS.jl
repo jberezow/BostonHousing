@@ -102,7 +102,7 @@ function nuts_parameters(trace)
     
     acc = 0
     for i=1:iters
-        new_trace = NUTS(trace, param_selection, acc_prob, m, m, false)[m+1]
+        new_trace = NUTS(trace, param_selection, acc_prob, m, m2, false)[m+1]
         new_score = get_score(new_trace)
         if prev_score != new_score
             return (new_trace, 1)
@@ -127,7 +127,7 @@ function layer_nuts(trace,mode="draw")
             v = new_trace[:l]+2 - j
             layer_selection = load_layer(v)
             #println("Current Layer: $v")
-            new_trace = NUTS(new_trace, layer_selection, acc_prob, m, m, false)[m+1]
+            new_trace = NUTS(new_trace, layer_selection, acc_prob, m, m2, false)[m+1]
         end
         
     #Forward Pass
@@ -136,7 +136,7 @@ function layer_nuts(trace,mode="draw")
             v = j
             layer_selection = load_layer(v)
             #println("Current Layer: $v")
-            new_trace = NUTS(new_trace, layer_selection, acc_prob, m, m, false)[m+1]
+            new_trace = NUTS(new_trace, layer_selection, acc_prob, m, m2, false)[m+1]
         end
     end
     
@@ -187,7 +187,7 @@ function layer_parameter(trace)
     end
 end
 
-function RJNUTS(trace, iters=ITERS, chain=CHAINS)
+function RJNUTS(trace, iters, chain)
     traces = []
     scores = []
     across_acceptance = []
@@ -202,14 +202,26 @@ function RJNUTS(trace, iters=ITERS, chain=CHAINS)
         push!(within_acceptance, accepted)
         push!(scores,get_score(trace))
         push!(traces, trace)
-        println("$i : $(get_score(trace))")
+        println("Chain $chain Iter $i : $(get_score(trace))")
         if i%5 == 0
             a_acc = 100*(sum(across_acceptance)/length(across_acceptance))
             w_acc = 100*(sum(within_acceptance)/length(within_acceptance))
-            println("Epoch $i A Acceptance Probability: $a_acc %")
-            println("Epoch $i W Acceptance Probability: $w_acc %")
+            println("Chain $chain Epoch $i A Acceptance Probability: $a_acc %")
+            println("Chain $chain Epoch $i W Acceptance Probability: $w_acc %")
         end
+        flush(stdout)
     end
     
     return traces, scores
+end
+
+function RJNUTS_parallel(trace, chain, ci)
+    
+    (trace, a_acc) = layer_parameter(trace)
+    trace  = gibbs_hyperparameters(trace)
+    trace  = gibbs_noise(trace)
+    (trace, w_acc)  = layer_nuts(trace)
+    println("Chain $chain Iter $ci : $(get_score(trace))")
+
+    return trace, a_acc, w_acc
 end

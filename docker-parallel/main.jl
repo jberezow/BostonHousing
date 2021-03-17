@@ -25,7 +25,10 @@ include("LoadData.jl");
 println("Packages Loaded")
 
 filename = "Parallel1.jld"
-ITERS = 10
+a_filename = "AcceptanceA.jld"
+w_filename = "AcceptanceW.jld"
+
+ITERS = 100
 CHAINS = Threads.nthreads()
 println("Number of threads: $CHAINS")
 
@@ -34,9 +37,10 @@ println("Number of threads: $CHAINS")
 #---------------
 
 #NUTS hyperparameters
-Δ_max = 10
+Δ_max = 1000
 acc_prob = 0.65
-m=1
+m=3
+m2=2
 
 #Network hyperparameters
 k_real = 4 #Number of hidden nodes per layer
@@ -65,22 +69,43 @@ obs = obs_master;
 #-----------
 
 println("Initializing Traces")
-println("------------------")
+println("-------------------")
 
-starting_traces = [generate(interpolator, (x_train,), obs)[1] for i=1:CHAINS]
 traces = [[] for i=1:CHAINS]
+a_acc = [[] for i=1:CHAINS]
+w_acc = [[] for i=1:CHAINS]
+
+for i=1:CHAINS
+    obs[:l] = ((i-1)%8 + 1)
+    (new_start,) = generate(interpolator, (x_train,), obs)
+    push!(traces[i],new_start)
+end
+
+active_trace = [traces[i][1] for i=1:CHAINS]
+a_active = [[] for i=1:CHAINS]
+w_active = [[] for i=1:CHAINS]
+
+obs = obs_master
 
 #--------------
 #Run Inference
 #--------------
-cd(current_dir)
+#cd(current_dir)
 println("Beginning Inference")
 println("-------------------")
+#traces, scores = RJNUTS(trace, ITERS)
 
-Threads.@threads for i=1:CHAINS
-    #@inbounds println("Chain $i")
-    #@inbounds println(starting_traces[i][:l])
-    traces[i], _ = @inbounds RJNUTS(starting_traces[i], ITERS)
+for i2=1:ITERS
+    Threads.@threads for i=1:CHAINS
+        active_trace[i],_,_ = @inbounds RJNUTS_parallel(traces[i][i2], i)
+        push!(traces[i],active_trace[i])
+        push!(a_acc[i],a_active[i])
+        push!(w_acc[i],w_active[i])
+    end
+    flush(stdout)
+    serialize(filename, traces)
+    serialize(a_filename, a_acc)
+    serialize(w_filename, w_acc)
 end
 
 serialize(filename, traces)
