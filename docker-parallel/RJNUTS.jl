@@ -45,27 +45,6 @@ end
     return new_trace
 end
 
-function G2(x, trace)
-    activation = relu
-    l = trace[:l]
-    ks = [trace[(:k,i)] for i=1:l]
-
-    for i=1:l
-        in_dim, out_dim = layer_unpacker(i, l, ks)
-        W = reshape(trace[(:W,i)], out_dim, in_dim)
-        b = reshape(trace[(:b,i)], trace[(:k,i)])
-        nn = Dense(W, b, activation)
-        x = nn(x)
-    end
-
-    Wₒ = reshape(trace[(:W,l+1)], 1, ks[l])
-    bₒ = reshape(trace[(:b,l+1)], 1)
-
-    nn_out = Dense(Wₒ, bₒ)
-    return nn_out(x)
-
-end;
-
 @gen function gibbs_noise(trace)
     
     obs_new = choicemap()::ChoiceMap
@@ -76,7 +55,7 @@ end;
     α = αᵧ + (n/2)
     
     x = get_args(trace)[1]
-    y_pred = transpose(G2(x,trace))[:,1]
+    y_pred = transpose(G(x,trace))[:,1]
     y_real = trace[:y]
     Σᵧ = sum((y_pred .- y_real).^2)/2
     β = 1/(1/βᵧ + Σᵧ)
@@ -101,14 +80,13 @@ function nuts_parameters(trace)
     prev_score = get_score(trace)
     
     acc = 0
-    for i=1:iters
-        new_trace = NUTS(trace, param_selection, acc_prob, m, m2, false)[m+1]
-        new_score = get_score(new_trace)
-        if prev_score != new_score
-            return (new_trace, 1)
-        else
-            return (trace, 0)
-        end
+
+    new_trace = NUTS(trace, param_selection, acc_prob, m, m2, false)[m+1]
+    new_score = get_score(new_trace)
+    if prev_score != new_score
+        return (new_trace, 1)
+    else
+        return (trace, 0)
     end
     
     return (trace, acc)
@@ -149,7 +127,7 @@ function layer_nuts(trace,mode="draw")
     
 end
 
-function layer_parameter(trace)
+function layer_parameter(trace, chain)
     obs = obs_master
     for i=1:trace[:l]+1
         obs[(:τ,i)] = trace[(:τ,i)]
@@ -162,7 +140,7 @@ function layer_parameter(trace)
     #################################################RJNUTS#################################################
     #NUTS Step 1
     trace_tilde = trace
-    for i=1:1
+    for i=1:2
         (trace_tilde,) = layer_nuts(trace_tilde,"for")
     end
     
@@ -171,7 +149,7 @@ function layer_parameter(trace)
     
     #NUTS Step 2
     trace_star = trace_prime
-    for i=1:1
+    for i=1:2
         (trace_star,) = layer_nuts(trace_star,"back")
     end
     #################################################RJNUTS#################################################
@@ -180,7 +158,7 @@ function layer_parameter(trace)
     across_score = model_score + q_weight
 
     if rand() < exp(across_score)
-        println("********** Accepted: $(trace_star[:l]) **********")
+        println("********** Accepted Chain $chain: $(trace_star[:l]) **********")
         return (trace_star, 1)
     else
         return (init_trace, 0)
@@ -203,7 +181,7 @@ function RJNUTS(trace, iters, chain)
         push!(scores,get_score(trace))
         push!(traces, trace)
         println("Chain $chain Iter $i : $(get_score(trace))")
-        if i%5 == 0
+        if i%10 == 0
             a_acc = 100*(sum(across_acceptance)/length(across_acceptance))
             w_acc = 100*(sum(within_acceptance)/length(within_acceptance))
             println("Chain $chain Epoch $i A Acceptance Probability: $a_acc %")
@@ -217,11 +195,20 @@ end
 
 function RJNUTS_parallel(trace, chain, ci)
     
-    (trace, a_acc) = layer_parameter(trace)
+    if rand(Uniform(0,1)) < 0.5
+        (trace, a_acc) = layer_parameter(trace, chain)
+    else
+        a_acc = NaN
+    end
     trace  = gibbs_hyperparameters(trace)
     trace  = gibbs_noise(trace)
-    (trace, w_acc)  = layer_nuts(trace)
-    println("Chain $chain Iter $ci : $(get_score(trace))")
+    if rand(Uniform(0,1)) < 0.5
+        (trace, w_acc)  = layer_nuts(trace)
+    else
+        (trace, w_acc) = nuts_parameters(trace)
+    end
+    current_l = trace[:l]
+    println("Chain $chain Iter $ci : $(get_score(trace)), Layer Count: $current_l")
 
     return trace, a_acc, w_acc
 end

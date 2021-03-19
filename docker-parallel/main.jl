@@ -5,6 +5,9 @@ cd(app_dir)
 push!(LOAD_PATH, app_dir)
 push!(LOAD_PATH, current_dir)
 
+println("Here we go...")
+flush(stdout)
+
 using Gen
 using Distributions
 using LinearAlgebra
@@ -23,12 +26,9 @@ include("proposals.jl")
 include("LoadData.jl");
 
 println("Packages Loaded")
+flush(stdout)
 
-filename = "Parallel1.jld"
-a_filename = "AcceptanceA.jld"
-w_filename = "AcceptanceW.jld"
-
-ITERS = 100
+ITERS = 1000
 CHAINS = Threads.nthreads()
 println("Number of threads: $CHAINS")
 
@@ -77,9 +77,14 @@ w_acc = [[] for i=1:CHAINS]
 
 for i=1:CHAINS
     obs[:l] = ((i-1)%8 + 1)
-    (new_start,) = generate(interpolator, (x_train,), obs)
+    #(new_start,) = generate(interpolator, (x_train,), obs)
+    new_start = find_best_trace(x_train,y_train,1000,obs)
+    score = get_score(new_start)
+    println("Chain $i starting score: $score")
     push!(traces[i],new_start)
 end
+
+flush(stdout)
 
 active_trace = [traces[i][1] for i=1:CHAINS]
 a_active = [[] for i=1:CHAINS]
@@ -90,22 +95,27 @@ obs = obs_master
 #--------------
 #Run Inference
 #--------------
-#cd(current_dir)
+cd(current_dir)
 println("Beginning Inference")
 println("-------------------")
-#traces, scores = RJNUTS(trace, ITERS)
+flush(stdout)
 
-for i2=1:ITERS
+try
     Threads.@threads for i=1:CHAINS
-        active_trace[i],_,_ = @inbounds RJNUTS_parallel(traces[i][i2], i)
-        push!(traces[i],active_trace[i])
-        push!(a_acc[i],a_active[i])
-        push!(w_acc[i],w_active[i])
+        @inbounds for i2=1:ITERS
+            active_trace[i],_,_ = RJNUTS_parallel(traces[i][i2], i, i2)
+            push!(traces[i],active_trace[i])
+            push!(a_acc[i],a_active[i])
+            push!(w_acc[i],w_active[i])
+            flush(stdout)
+            if i2%5 == 0
+                write_output(i)
+            end
+            if i2%25 == 0
+                write_acceptance()
+            end
+        end
     end
-    flush(stdout)
-    serialize(filename, traces)
-    serialize(a_filename, a_acc)
-    serialize(w_filename, w_acc)
+finally
+    write_output()
 end
-
-serialize(filename, traces)

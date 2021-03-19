@@ -1,24 +1,21 @@
-function find_best_trace(x,y,iters,plot_it=false)
-    obs_master = choicemap()::ChoiceMap
-    obs_master[:y] = y_train
-    obs = obs_master;
-    best_trace, scores, mses = likelihood_regression(x,y,iters)
-
-    if plot_it
-        PyPlot.scatter(mses, scores)
-        plt.title("Comparing Classifier Accuracy to Log Likelihood")
-        plt.xlabel("Classifier MSE")
-        plt.ylabel("Log Likelihood")
-    end
-
-    pred_y = transpose(G(x_train,best_trace))[:,1]
-    best_mse = mse_scaled(pred_y, y_train)
-    variance = 1/(best_trace[:τᵧ])
-    println("Best noise variance: $variance")
-    println("Best MSE: $best_mse")
-    println("Best Score: $(get_score(best_trace))")
-    println("Best layer count: $(best_trace[:l])")
+function find_best_trace(x,y,iters,obs=obs_master)
+    (best_trace,) = generate(interpolator, (x,), obs)
+    best_pred_y = transpose(G(x, best_trace))[:,1]
+    best_mse = mse_scaled(best_pred_y, y)
     
+    (trace,) = generate(interpolator, (x,), obs)
+    pred_y = transpose(G(x, trace))[:,1]
+    mse = mse_scaled(pred_y, y)
+    
+    for i=1:iters
+        (trace,) = generate(interpolator, (x,), obs)
+        pred_y = transpose(G(x, trace))[:,1]
+        mse = mse_scaled(pred_y, y)
+        if mse < best_mse
+            best_mse = mse
+            best_trace = trace
+        end
+    end
     return best_trace
 end
 
@@ -32,8 +29,21 @@ function mse_unscaled(y_pred,y_real)
     √(sum((y_pred .- y_real).^2))/length(y_real)
 end
 
-function likelihood_regression(x,y,iters)
-    obs = obs_master;
+function write_output(chain)
+    filename_pre = "trace"
+    filename_end = "output.jld"
+    current_file = join([filename_pre,"$chain", filename_end])
+    serialize(current_file, traces[chain])
+end;
+
+function write_acceptance()
+    a_filename = "AcceptanceA.jld"
+    w_filename = "AcceptanceW.jld"
+    serialize(a_filename, a_acc)
+    serialize(w_filename, w_acc)
+end;
+
+function likelihood_regression(x,y,iters,obs)
     scores = []
     mses = []
     ls = []
@@ -62,5 +72,5 @@ function likelihood_regression(x,y,iters)
             best_pred_y = pred_y
         end
     end
-    return(best_trace, scores, mses)
+    return best_trace
 end;

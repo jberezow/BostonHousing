@@ -2,7 +2,7 @@
 #Load Boston Housing Data
 #------------------------
 
-Random.seed!(3) #Best so far: Seed 3 (see noise variance of 3.048)
+Random.seed!(10) #Best so far: Seed 3 (see noise variance of 3.048)
 data = load("boston.jld")["boston"]
 data = data[shuffle(1:end), :]
 
