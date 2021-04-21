@@ -54,7 +54,10 @@ end
             
             #Hidden Weights
             u = zeros(h)
+            τ = trace[(:τ,i)]
+            τᵦ = trace[(:τᵦ,i)]
             σ = 1/trace[(:τ,i)]
+            println(σ)
             S = Diagonal([σ for i=1:length(u)])
             W = @trace(mvnormal(u,S), (:W,i))
 
@@ -71,7 +74,9 @@ end
             
             q_score += (
                 log(pdf(MvNormal(u,S),W)) + 
-                log(pdf(MvNormal(ub,Sb),b))
+                log(pdf(MvNormal(ub,Sb),b)) +
+                log(pdf(Gamma(α₂,β₂),τ)) +
+                log(pdf(Gamma(α₁,β₁),τᵦ)) 
                 )
         else
             obs_new[(:k,i)] = trace[(:k,i)]

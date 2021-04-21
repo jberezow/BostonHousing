@@ -95,9 +95,9 @@ function NUTS(trace, selection, δ, M, Madapt, verbose=true)
   θs = [zeros(length(θ0)) for i=1:M+1]
 
   θs[1] = θ0
-  ϵ = 0.75 #find_reasonable_ϵ(θ0)
+  ϵ = find_reasonable_ϵ(θ0)
   μ, γ, t_0, κ = log(10 * ϵ), 0.05, 10, 0.75
-  ϵ̄, H̄ = 0.75, 0
+  ϵ̄, H̄ = 1.0, 0
 
   if verbose println("[NUTS] start sampling for $M samples with inital ϵ=$ϵ") end
 

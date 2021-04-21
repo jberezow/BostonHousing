@@ -52,9 +52,13 @@ end
             obs_new[(:k,i)] = k
             h = Int(k * k)
             
+            τ = trace[(:τ,i)]
+            τᵦ = trace[(:τᵦ,i)]
+            
             #Hidden Weights
             u = zeros(h)
             σ = 1/trace[(:τ,i)]
+            #println(σ)
             S = Diagonal([σ for i=1:length(u)])
             W = @trace(mvnormal(u,S), (:W,i))
 
@@ -71,7 +75,9 @@ end
             
             q_score += (
                 log(pdf(MvNormal(u,S),W)) + 
-                log(pdf(MvNormal(ub,Sb),b))
+                log(pdf(MvNormal(ub,Sb),b)) +
+                log(pdf(Gamma(α₂,β₂),τ)) +
+                log(pdf(Gamma(α₁,β₁),τᵦ)) 
                 )
         else
             obs_new[(:k,i)] = trace[(:k,i)]
@@ -93,12 +99,12 @@ end
 
 @gen function layer_death(trace)
     
-    previous_l = trace[:l] #4
-    new_l = l_list[previous_l-1] #3 
-    difference = abs(new_l - previous_l) #1
+    previous_l = trace[:l] 
+    new_l = l_list[previous_l-1] 
+    difference = abs(new_l - previous_l) 
     
     #Select Insertion Place for New Layer
-    output = previous_l + 1 #5
+    output = previous_l + 1 
     
     obs_new = obs_maker(trace)
     args = get_args(trace)
@@ -114,10 +120,13 @@ end
     #-----------------------------------------------------
     q_score = 0
     
-    for i=1:new_l
+    for i=1:previous_l
         if i == new_l
             k = trace[(:k,i+1)]
             h = Int(k * k)
+            
+            τ = trace[(:τ,i)]
+            τᵦ = trace[(:τᵦ,i)]
             
             #Hidden Weights
             W = trace[(:W,output)]
@@ -133,7 +142,9 @@ end
             
             q_score += (
                 log(pdf(MvNormal(u,S),W)) + 
-                log(pdf(MvNormal(ub,Sb),b))
+                log(pdf(MvNormal(ub,Sb),b)) +
+                log(pdf(Gamma(α₂,β₂),τ)) +
+                log(pdf(Gamma(α₁,β₁),τᵦ)) 
                 )
         else
             obs_new[(:k,i)] = trace[(:k,i)]

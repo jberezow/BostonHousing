@@ -76,7 +76,7 @@ a_acc = [[] for i=1:CHAINS]
 w_acc = [[] for i=1:CHAINS]
 
 for i=1:CHAINS
-    obs[:l] = ((i-1)%8 + 1)
+    obs[:l] = ((i-1)%4 + 1)
     #(new_start,) = generate(interpolator, (x_train,), obs)
     new_start = find_best_trace(x_train,y_train,1000,obs)
     score = get_score(new_start)
@@ -108,10 +108,10 @@ try
             push!(a_acc[i],a_active[i])
             push!(w_acc[i],w_active[i])
             flush(stdout)
-            if i2%5 == 0
+            if i2%10 == 0
                 write_output(i)
             end
-            if i2%25 == 0
+            if i2%50 == 0
                 write_acceptance()
             end
         end
