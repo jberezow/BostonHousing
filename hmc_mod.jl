@@ -1,5 +1,5 @@
 function sample_momenta(n::Int)
-    Float64[random(normal, 0, 1) for _=1:n]
+    Float64[random(normal, 0, 2.0) for _=1:n]
 end
 
 function assess_momenta(momenta)

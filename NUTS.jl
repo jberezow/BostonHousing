@@ -9,6 +9,9 @@ function NUTS(trace, selection, δ, M, Madapt, verbose=true)
   argdiffs = map((_) -> NoChange(), args)
   (_, vals, gradient_trie) = choice_gradients(trace, selection, retval_grad)
   θ0 = to_array(vals, Float64)
+  #cov = ((trace[:τ])^2) #Try scaling the mass matrix per Neal
+  cov = 1.0
+  #println("Current covariance: $cov")
     
   function L(θ)
     θtrace = from_array(vals, θ)
@@ -35,7 +38,7 @@ function NUTS(trace, selection, δ, M, Madapt, verbose=true)
   end
 
   function find_reasonable_ϵ(θ)
-    ϵ, r = 1, Float64[random(normal, 0, 1.0) for _=1:length(θ)]#randn(length(θ))
+    ϵ, r = 1, Float64[random(normal, 0, cov) for _=1:length(θ)]#randn(length(θ))
     θ′, r′ = leapfrog(θ, r, ϵ)
 
     # This trick prevents the log-joint or its graident from being infinte
@@ -103,7 +106,7 @@ function NUTS(trace, selection, δ, M, Madapt, verbose=true)
 
   for m = 1:M
     if verbose print('.') end
-    r0 = Float64[random(normal, 0, 1.0) for _=1:length(θ0)]
+    r0 = Float64[random(normal, 0, 0.1) for _=1:length(θ0)]
     #r0 = randn(length(θ0))
     u = rand() * exp(L(θs[m]) - 0.5 * dot(r0, r0)) # Note: θ^{m-1} in the paper corresponds to
                                                    #       `θs[m]` in the code
