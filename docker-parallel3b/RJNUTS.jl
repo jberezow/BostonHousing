@@ -69,7 +69,7 @@ function layer_nuts(trace,mode="draw")
     
 end
 
-function layer_parameter(trace)
+function layer_parameter(trace,chain)
     obs = obs_master
     #for i=1:trace[:l]+1
         #obs[(:τ,i)] = trace[(:τ,i)]
@@ -104,7 +104,7 @@ function layer_parameter(trace)
     #println(model_score)
 
     if rand() < exp(across_score)
-        println("********** Accepted: $(trace_star[:l]) **********")
+        println("********** Accepted: Chain: $chain Layers: $(trace_star[:l]) **********")
         return (trace_star, 1)
     else
         return (init_trace, 0)
@@ -141,13 +141,9 @@ end
 
 function RJNUTS_parallel(trace, chain, ci)
     
-    (trace, a_acc) = layer_parameter(trace)
+    (trace, a_acc) = layer_parameter(trace,chain)
+    (trace, w_acc) = nuts_parameters(trace)
 
-    if rand(Uniform(0,1)) < 0.5
-        (trace, w_acc) = layer_nuts(trace)
-    else
-        (trace, w_acc) = nuts_parameters(trace)
-    end
     current_l = trace[:l]
     println("Chain $chain Iter $ci : $(get_score(trace)), Layer Count: $current_l")
 
