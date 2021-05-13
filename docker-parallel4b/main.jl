@@ -77,7 +77,6 @@ w_acc = [[] for i=1:CHAINS]
 
 for i=1:CHAINS
     obs[:l] = ((i-1)%4 + 1)
-    #(new_start,) = generate(interpolator, (x_train,), obs)
     new_start = find_best_trace(x_train,y_train,1000,obs)
     score = get_score(new_start)
     println("Chain $i starting score: $score")
