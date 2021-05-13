@@ -1,0 +1,10 @@
+Random seed 23
+Likelihood 1.0
+Weights 1.0
+Nodes 2
+Layers 1-8
+Acc 0.65
+Grad_Max 1000
+m, m2 = 1
+0.5 layer nuts parameter nuts
+Across param nuts layer nuts jump layer nuts param nuts
